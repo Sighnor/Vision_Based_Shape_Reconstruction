@@ -12,7 +12,8 @@ int main(int argc, char** argv)
 	vec3 position(0.f, 50.f, 0.f);
 	mat3 orientation(vec3(1.f, 0.f, 0.f), vec3(0.f, 1.f, 0.f), vec3(0.f, 0.f, 1.f));
 
-	cv::Mat l_img = cv::imread("4.png");
+	cv::Mat l_img = cv::imread("5.png");
+	cv::imshow("img", l_img);
 	std::vector<vec2<float>> l_contour_points = Canny(l_img);
 	std::vector<vec2<float>> l_center_points = Identify_Centerline(l_img, l_contour_points);
 

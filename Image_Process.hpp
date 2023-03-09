@@ -8,20 +8,20 @@
 #include <opencv2\imgproc\types_c.h>
 #include "Net.hpp"
 #include "Math.hpp"
-//高斯核
-static inline float Core(int s, int t, float k, float theta2)
+
+static inline float Core(int s, int t, float k, float theta_2)
 {
     float distance2 = s * s + t * t;
-    return k * exp(-distance2 / (2 * theta2));
+    return k * exp(-distance2 / (2 * theta_2));
 }
 
-static inline void Precompute_Core(std::vector<float> &prt_core, int m, int n, float k, float theta2)
+static inline void Precompute_Core(std::vector<float> &prt_core, int m, int n, float k, float theta_2)
 {
     for (int a = 0; a <= m; a++)
     {
         for (int b = 0; b <= n; b++)
         {
-            prt_core[a * (n + 1) + b] = Core(a, b, k, theta2);//预计算高斯核
+            prt_core[a * (n + 1) + b] = Core(a, b, k, theta_2);
         }
     }
 }
@@ -87,7 +87,7 @@ static inline void Draw_SOM(cv::Mat &img1, const vec2<float> contour_point, Net 
     std::vector<vec2<float>> points = net.Node_Data();
 
     Draw_Line(img2, points);
-    Draw_Curve(img2, points);
+    //Draw_Curve(img2, points);
 
     cv::circle(img2, cv::Point(points[id].x, points[id].y), 10, cv::Scalar(255, 0, 0)); 
     cv::circle(img2, cv::Point(contour_point.x, contour_point.y), 10, cv::Scalar(0, 255, 0)); 
@@ -95,22 +95,21 @@ static inline void Draw_SOM(cv::Mat &img1, const vec2<float> contour_point, Net 
     cv::imshow("SOM", img2);
     cv::waitKey(10);
 }
-//高斯滤波
-static inline cv::Mat Gaussian_filter(cv::Mat &img1, int m, int n, float k, float theta2)
+
+static inline cv::Mat Gaussian_filter(cv::Mat &img1, int m, int n, float k, float theta_2)
 {
     int height = img1.rows;
     int width = img1.cols;
     cv::Mat img2 = img1.clone();
     std::vector<float> prt_core((m + 1) * (n + 1));
 
-    Precompute_Core(prt_core, m, n, k, theta2);
+    Precompute_Core(prt_core, m, n, k, theta_2);
 
     #pragma omp parallel for
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
         {
-            //边界判断，防止溢出
             int neg_yRadius = -std::min(y, m);
             int neg_xRadius = -std::min(x, n);
             int pos_yRadius = std::min(height - 1 - y, m);
@@ -135,6 +134,9 @@ static inline cv::Mat Gaussian_filter(cv::Mat &img1, int m, int n, float k, floa
             img2.at<cv::Vec3b>(y, x)[2] = R / sum_Core;
         }
     }
+
+    cv::imshow("Guassian", img2);
+
     return img2;
 }
 

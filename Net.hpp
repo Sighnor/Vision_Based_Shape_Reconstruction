@@ -120,15 +120,35 @@ inline int Net::SOM_Find_Min(vec2<float> &contour)
 
 inline void Net::SOM_Update(vec2<float> &contour, int id, float alpha, float sigma)
 {
-    nodes[id].data = nodes[id].data + (0.5 * alpha * (contour - nodes[id].data));
+    std::vector<int> map(size);
+
+    map[id] = 1;
+    nodes[id].data = nodes[id].data + (alpha * (contour - nodes[id].data));
     nodes[id].weight = nodes[id].weight;
+
     if(sigma >= 1.0)
     {
         for(int i = 0;i < nodes[id].neighbor_ids.size;i++)
         {
             int neighbor_id = nodes[id].neighbor_ids(i);
+
+            map[neighbor_id] = 1;
             nodes[neighbor_id].data = nodes[neighbor_id].data + (alpha * (nodes[id].data - nodes[neighbor_id].data));
             nodes[neighbor_id].weight = nodes[neighbor_id].weight;
+
+            if(sigma >= 1.5)
+            {
+                for(int j = 0;j < nodes[neighbor_id].neighbor_ids.size;j++)
+                {
+                    int next_id = nodes[neighbor_id].neighbor_ids(j);
+
+                    if(map[next_id] != 1)
+                    {
+                        nodes[next_id].data = nodes[next_id].data + (alpha * (nodes[id].data - nodes[next_id].data));
+                        nodes[next_id].weight = nodes[next_id].weight;
+                    }
+                }
+            }
         }
     }
 }
