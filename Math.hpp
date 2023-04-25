@@ -1,4 +1,3 @@
-#pragma once
 #ifndef EXTRACTION_MATH
 #define EXTRACTION_MATH
 

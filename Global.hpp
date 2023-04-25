@@ -1,5 +1,3 @@
-#pragma once
-
 #include <random>
 
 static inline float get_random_float()
