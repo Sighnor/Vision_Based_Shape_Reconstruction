@@ -1,9 +1,13 @@
+#ifndef IMG_NET
+#define IMG_NET
+
 #include <stdio.h>
 #include <fstream>
 #include <string.h>
 #include <vector>
 #include <random>
-#include "Math.hpp"
+#include "array.hpp"
+#include "vec.hpp"
 
 class Net_Node
 {
@@ -11,7 +15,7 @@ class Net_Node
         int id;
         array1d<int> neighbor_ids;
         float weight;
-        vec2<float> data;
+        vec2 data;
 
         Net_Node(int _id, array1d<int> _neighbor_ids) : id(_id), neighbor_ids(_neighbor_ids), weight(), data() {}
 };
@@ -24,17 +28,17 @@ public:
 
     Net(int _size = 0) : size(_size) {}
     
-    inline std::vector<vec2<float>> Node_Data();
+    inline std::vector<vec2> Node_Data();
     inline void Read(const char* filename);
     inline void Write(const char* filename);
     inline void SOM_Init(int width, int height);
-    inline int SOM_Find_Min(vec2<float> &contour);
-    inline void SOM_Update(vec2<float> &contour, int id, float alpha, float sigma);
+    inline int SOM_Find_Min(vec2 &contour);
+    inline void SOM_Update(vec2 &contour, int id, float alpha, float sigma);
 };
 
-inline std::vector<vec2<float>> Net::Node_Data()
+inline std::vector<vec2> Net::Node_Data()
 {
-    std::vector<vec2<float>> res;
+    std::vector<vec2> res;
     for(auto pos : nodes)
     {
         res.push_back(pos.data);
@@ -100,13 +104,13 @@ inline void Net::SOM_Init(int height, int width)
     }
 }
 
-inline int Net::SOM_Find_Min(vec2<float> &contour)
+inline int Net::SOM_Find_Min(vec2 &contour)
 {
     int id;
     float min_distance = 10000000000;
     for(int i = 0;i < size;i++)
     {
-        float temp_distance = distance(nodes[i].data, contour);
+        float temp_distance = length(nodes[i].data - contour);
         if(temp_distance < min_distance)
         {
             id = i;
@@ -116,7 +120,7 @@ inline int Net::SOM_Find_Min(vec2<float> &contour)
     return id;
 }
 
-inline void Net::SOM_Update(vec2<float> &contour, int id, float alpha, float sigma)
+inline void Net::SOM_Update(vec2 &contour, int id, float alpha, float sigma)
 {
     std::vector<int> map(size);
 
@@ -150,3 +154,5 @@ inline void Net::SOM_Update(vec2<float> &contour, int id, float alpha, float sig
         }
     }
 }
+
+#endif

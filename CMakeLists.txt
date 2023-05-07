@@ -12,5 +12,5 @@ find_package(OpenCV REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 
-ADD_EXECUTABLE(Extraction main.cpp Camera.hpp Image_Process.hpp Math.hpp Net.hpp)
+ADD_EXECUTABLE(Extraction main.cpp array.hpp camera.hpp curve.hpp global.hpp image_process.hpp mat.hpp net.hpp vec.hpp)
 target_link_libraries(Extraction ${OpenCV_LIBRARIES})
