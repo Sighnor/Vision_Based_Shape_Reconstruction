@@ -93,6 +93,7 @@ void PID_curve(cv::Mat &img1, const std::vector<vec2> &points)
         int i0 = floor(i);
         int i1 = ceil(i);
         vec2 point = lerp(points[i0], points[i1], i - i0);
+        // vec2 point = points[i1];
 
         pos_pid_control(
                         x,
@@ -101,7 +102,7 @@ void PID_curve(cv::Mat &img1, const std::vector<vec2> &points)
                         point,
                         vec2(1.f, 1.f), 
                         vec2(0.05f), 
-                        vec2(0.1f), 
+                        vec2(0.2f), 
                         200.f, 
                         1.f / 60.f);
 

@@ -54,7 +54,7 @@ void Draw_Curve(cv::Mat &img1, const std::vector<vec2> &points, Curve curve_type
     }
 }
 
-void Draw_SOM(cv::Mat &img1, const vec2 contour_point, Net &net, int id)
+void Draw_SOM(cv::Mat &img1, const vec2 contour_point, Net &net, int id, const char* img_name)
 {
     cv::Mat img2 = img1.clone();
     std::vector<vec2> points = net.Node_Data();
@@ -65,7 +65,7 @@ void Draw_SOM(cv::Mat &img1, const vec2 contour_point, Net &net, int id)
     cv::circle(img2, cv::Point(points[id].x, points[id].y), 10, cv::Scalar(255, 0, 0)); 
     cv::circle(img2, cv::Point(contour_point.x, contour_point.y), 10, cv::Scalar(0, 255, 0)); 
     
-    cv::imshow("SOM", img2);
+    cv::imshow(img_name, img2);
     cv::waitKey(10);
 }
 
@@ -108,7 +108,7 @@ cv::Mat Gaussian_filter(cv::Mat &img1, int m, int n, float k, float theta_2)
         }
     }
 
-    cv::imshow("Guassian", img2);
+    // cv::imshow("Guassian", img2);
 
     return img2;
 }
@@ -193,21 +193,21 @@ std::vector<vec2> Canny(cv::Mat &img1)
                     filter.ptr<uchar>(y)[x] = 0.0;
                 }
             }
-            if(filter.ptr<uchar>(y)[x] > 0.0)
+            if(filter.ptr<uchar>(y)[x] > 2.0)
             {
                 contour_points.push_back(vec2(float(x), float(y)));
             }
         }
     }
 
-    cv::threshold(filter, filter, 10, 255, CV_THRESH_BINARY);
+    cv::threshold(filter, filter, 2, 255, CV_THRESH_BINARY);
 
     cv::imshow("Canny", filter);
 
     return contour_points;
 }
 
-std::vector<vec2> Identify_Centerline(cv::Mat &img1, std::vector<vec2> &contour_points)
+std::vector<vec2> Identify_Centerline(cv::Mat &img1, std::vector<vec2> &contour_points, const char* img_name)
 {
     int T = 12000;
     std::random_device dev;
@@ -215,7 +215,7 @@ std::vector<vec2> Identify_Centerline(cv::Mat &img1, std::vector<vec2> &contour_
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
     Net net;
-    net.Read("../resourses/net.bin");
+    net.Read("../resources/net.bin");
 	net.SOM_Init(img1.rows, img1.cols);
 
     for(int t = 0;t < 2 * T;t++)
@@ -224,9 +224,9 @@ std::vector<vec2> Identify_Centerline(cv::Mat &img1, std::vector<vec2> &contour_
         int id = net.SOM_Find_Min(contour_points[cord_id]);
         float alpha = 0.01 / (float(1) + float(t) / float(T));
         float sigma = t < T? 1.0 : 1.0;
-        if(t % 60 == 0)
+        if(t == 2 * T - 1)
         {
-            Draw_SOM(img1, contour_points[cord_id], net, id);
+            Draw_SOM(img1, contour_points[cord_id], net, id, img_name);
         }
 
         net.SOM_Update(contour_points[cord_id], id, alpha, sigma);

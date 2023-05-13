@@ -24,7 +24,7 @@ inline vec3 Get_Intersection(const Ray &ray1, const Ray &ray2)
     float delta1 = dot((ray2.ori - ray1.ori), ray1.dir);
     float delta2 = dot((ray1.ori - ray2.ori), ray2.dir);
 
-    float det = std::max(a * d - b * c, 0.001f);
+    float det = a * d - b * c;
     float det1 = delta1 * d - b * delta2;
     float det2 = a * delta2 - delta1 * c;
 
@@ -65,22 +65,22 @@ inline Ray Camera::Get_Ray(float x, float y, Side side)
     vec3 ori;
     vec3 dir;
 
-    float _x = (2 * x / width - 1) * imageAspectRatio * scale;
-    float _y = (1 - 2 * y / height) * scale;
+    float _x = (2 * (x + 0.5f) / width - 1) * imageAspectRatio * scale;
+    float _y = (1 - 2 * (y + 0.5f) / height) * scale;
     float _z = -1.f;
 
     switch (side)
     {
-    case LEFT:
-        ori = vec3(-distance, 0.f, 0.f);
-        dir = normalize(vec3(_x, _y, _z));
-        break;
-    case RIGHT:
-        ori = vec3(distance, 0.f, 0.f);
-        dir = normalize(vec3(_x, _y, _z));
-        break;
-    default:
-        break;
+        case LEFT:
+            ori = position + orientation * vec3(-distance / 2.f, 0.f, 0.f);
+            dir = normalize(orientation * vec3(_x, _y, _z));
+            break;
+        case RIGHT:
+            ori = position + orientation * vec3(distance / 2.f, 0.f, 0.f);
+            dir = normalize(orientation * vec3(_x, _y, _z));
+            break;
+        default:
+            break;
     }
 
     return Ray(ori, dir);
@@ -90,6 +90,10 @@ inline vec3 Camera::Rebuild(const vec2 &point1, const vec2 &point2)
 {
     Ray l_ray = Get_Ray(point1.x, point1.y, LEFT);
     Ray r_ray = Get_Ray(point2.x, point2.y, RIGHT);
+
+    // std::cout << l_ray.ori.z - r_ray.ori.z << std::endl;
+    // std::cout << l_ray.dir.z - r_ray.dir.z << std::endl;
+    // std::cout << l_ray.dir.y - r_ray.dir.y << std::endl;
 
     vec3 cordiantes = Get_Intersection(l_ray, r_ray);
     return position + (orientation * cordiantes);
