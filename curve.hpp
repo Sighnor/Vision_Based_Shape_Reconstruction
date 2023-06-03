@@ -9,15 +9,15 @@
 #include <opencv2\imgproc\types_c.h>
 #include "vec.hpp"
 
-void Draw_point(cv::Mat &img1, vec2 &point, std::vector<float> &core)
+void Draw_point(cv::Mat &img1, vec2 &point, std::vector<float> &core, vec3 color)
 {
-    for(int i = -1;i <= 1;i++)
+    for(int i = -1; i <= 1; i++)
     {
         for(int j = -1;j <= 1;j++)
         {
-            img1.at<cv::Vec3b>(point.y + i, point.x + j)[0] = 0;
-            img1.at<cv::Vec3b>(point.y + i, point.x + j)[1] = 0;
-            img1.at<cv::Vec3b>(point.y + i, point.x + j)[2] = core[abs(i) * 2  + abs(j)] * 255;
+            img1.at<cv::Vec3b>(point.y + i, point.x + j)[0] = color.x;
+            img1.at<cv::Vec3b>(point.y + i, point.x + j)[1] = color.y;
+            img1.at<cv::Vec3b>(point.y + i, point.x + j)[2] = core[abs(i) * 2  + abs(j)] * color.z;
         }
     }
 }
@@ -31,7 +31,7 @@ vec2 recursive_bezier(const std::vector<vec2> &points, float t)
         return (1-t) * points[0] + t * points[1];
     }
     
-    for(int i = 0;i < (points.size() -1);i++)
+    for(int i = 0; i < (points.size() -1); i++)
     {
        sub_points.push_back((1-t) * points[i] + t * points[i+1]);
     }
@@ -48,7 +48,7 @@ void bezier_curve(cv::Mat &img1, const std::vector<vec2> &points)
     {
         auto point = recursive_bezier(points,t);
 
-        Draw_point(img1, point, prt_core);
+        Draw_point(img1, point, prt_core, vec3(255, 0, 0));
     }
 }
 
@@ -96,17 +96,69 @@ void PID_curve(cv::Mat &img1, const std::vector<vec2> &points)
         // vec2 point = points[i1];
 
         pos_pid_control(
-                        x,
-                        vel,
-                        acc,
-                        point,
-                        vec2(1.f, 1.f), 
-                        vec2(0.05f), 
-                        vec2(0.2f), 
-                        200.f, 
-                        1.f / 60.f);
+            x,
+            vel,
+            acc,
+            point,
+            vec2(1.f, 1.f), 
+            vec2(0.05f), 
+            vec2(0.2f), 
+            200.f, 
+            1.f / 60.f);
 
-        Draw_point(img1, x, prt_core);
+        Draw_point(img1, x, prt_core, vec3(0, 255, 0));
+    }
+}
+
+void cubic_spine_interpolation(
+        vec2 &x,
+        const vec2 &x0,
+        const vec2 &x1,
+        const vec2 &v0,
+        const vec2 &v1,
+        float t)
+{
+    vec2 a = 2 * x0 - 2 * x1 + v0 + v1;
+    vec2 b = - 3 * x0 + 3 * x1 - 2 * v0 - v1;
+    vec2 c = v0;
+    vec2 d = x0;
+
+    x = a * t * t * t + b * t * t + c * t + d;
+}
+
+void spine_curve(cv::Mat &img1, const std::vector<vec2> &points)
+{
+    std::vector<float> prt_core((1 + 1) * (1 + 1));
+    Precompute_Core(prt_core, 1, 1, 1.0, 1.5);
+
+    std::vector<vec2> vec(points.size());
+
+    vec[0] = points[1] - points[0];
+    vec[points.size() - 1] = points[points.size() - 1] - points[points.size() - 2];
+    for(int i = 1; i < points.size() - 1; i++)
+    {
+        vec[i] = (points[i + 1] - points[i - 1]) / 2.f;
+    }
+
+    int sample_num = 300;
+
+    for(float t = 0; t < 1.f; t += 1.f / sample_num)
+    {
+        float i = t * (points.size() - 1);
+        int i0 = floor(i);
+        int i1 = ceil(i);
+
+        vec2 point;
+
+        cubic_spine_interpolation(
+            point, 
+            points[i0], 
+            points[i1], 
+            vec[i0], 
+            vec[i0], 
+            i - i0);
+
+        Draw_point(img1, point, prt_core, vec3(0, 0, 255));
     }
 }
 

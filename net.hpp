@@ -30,7 +30,7 @@ public:
     
     inline std::vector<vec2> Node_Data();
     inline void Read(const char* filename);
-    inline void Write(const char* filename);
+    inline void Write(const char* filename, int size);
     inline void SOM_Init(int width, int height);
     inline int SOM_Find_Min(vec2 &contour);
     inline void SOM_Update(vec2 &contour, int id, float alpha, float sigma);
@@ -53,7 +53,7 @@ inline void Net::Read(const char* filename)
 
     fread(&size, sizeof(int), 1, fp);
 
-    for(int i = 0;i < size;i++)
+    for(int i = 0; i < size; i++)
     {
         int id;
         int neighbor_size;
@@ -72,20 +72,39 @@ inline void Net::Read(const char* filename)
     fclose(fp);
 }
 
-inline void Net::Write(const char* filename)
+inline void Net::Write(const char* filename, int size)
 {
-    int data[] = {7, 
-                  0, 1, 1, 
-                  1, 2, 0, 2,
-                  2, 2, 1, 3,
-                  3, 2, 2, 4,
-                  4, 2, 3, 5,
-                  5, 2, 4, 6,
-                  6, 1, 5};
+    int *data;
+    int data_size = 1 + size * 4 - 1 - 1;
+    data = (int*)malloc(data_size * sizeof(int));
+    
+    data[0] = size;
+
+    data[1 + 0] = 0;
+    data[1 + 1] = 1;
+    data[1 + 2] = 1;
+
+    for(int i = 1; i < size - 1; i++)
+    {
+        data[1 + i * 4 - 1 + 0] = i;
+        data[1 + i * 4 - 1 + 1] = 2;
+        data[1 + i * 4 - 1 + 2] = i - 1;
+        data[1 + i * 4 - 1 + 3] = i + 1;
+    }
+
+    data[1 + (size - 1) * 4 - 1 + 0] = size - 1;
+    data[1 + (size - 1) * 4 - 1 + 1] = 1;
+    data[1 + (size - 1) * 4 - 1 + 2] = size - 2;
+
+    for(int i = 0; i < data_size; i++)
+    {
+        // std::cout << data[i] << std::endl;
+    }
+
     FILE* fp = fopen(filename, "wb");
     assert(fp != NULL);
-    size_t num = fwrite(data, sizeof(int), 27, fp);
-    assert((int)num == 27);
+    size_t num = fwrite(data, sizeof(int), data_size, fp);
+    assert((int)num == data_size);
     fclose(fp);
 }
 
@@ -95,20 +114,20 @@ inline void Net::SOM_Init(int height, int width)
     std::mt19937 rng(dev());
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-    for(int i = 0;i < size;i++)
+    for(int i = 0; i < size; i++)
     {
         nodes[i].weight = dist(rng);
-        //nodes[i].data = vec2(float(0.5 * width), float(float(i + 1) / (size + 1) * height));
-        nodes[i].data = vec2(float(float(i + 1) / (size + 1) * width), float(0.5 * height));
-        //std::cout << node.id << ", " << node.neighbor_ids << ", " << node.weight << ", " << node.data << std::endl;
+        nodes[i].data = vec2(0.5f * width, (float((size - 1 - i) + 1) / (size + 1) * 0.5f + 0.5f * (1.f - 0.5f)) * height);
+        // nodes[i].data = vec2(float(float(i + 1) / (size + 1) * width), float(0.5 * height));
+        // std::cout << node.id << ", " << node.neighbor_ids << ", " << node.weight << ", " << node.data << std::endl;
     }
 }
 
 inline int Net::SOM_Find_Min(vec2 &contour)
 {
-    int id;
+    int id = 0;
     float min_distance = 10000000000;
-    for(int i = 0;i < size;i++)
+    for(int i = 0; i < size; i++)
     {
         float temp_distance = length(nodes[i].data - contour);
         if(temp_distance < min_distance)
@@ -122,37 +141,37 @@ inline int Net::SOM_Find_Min(vec2 &contour)
 
 inline void Net::SOM_Update(vec2 &contour, int id, float alpha, float sigma)
 {
-    std::vector<int> map(size);
+    // std::vector<int> map(size);
 
-    map[id] = 1;
-    nodes[id].data = nodes[id].data + (alpha * (contour - nodes[id].data));
-    nodes[id].weight = nodes[id].weight;
+    // map[id] = 1;
+    // nodes[id].data = nodes[id].data + (alpha * (contour - nodes[id].data));
+    // nodes[id].weight = nodes[id].weight;
 
-    if(sigma >= 1.0)
-    {
-        for(int i = 0;i < nodes[id].neighbor_ids.size;i++)
-        {
-            int neighbor_id = nodes[id].neighbor_ids(i);
+    // if(sigma >= 1.0)
+    // {
+    //     for(int i = 0; i < nodes[id].neighbor_ids.size; i++)
+    //     {
+    //         int neighbor_id = nodes[id].neighbor_ids(i);
 
-            map[neighbor_id] = 1;
-            nodes[neighbor_id].data = nodes[neighbor_id].data + (alpha * (nodes[id].data - nodes[neighbor_id].data));
-            nodes[neighbor_id].weight = nodes[neighbor_id].weight;
+    //         map[neighbor_id] = 1;
+    //         nodes[neighbor_id].data = nodes[neighbor_id].data + (alpha * (nodes[id].data - nodes[neighbor_id].data));
+    //         nodes[neighbor_id].weight = nodes[neighbor_id].weight;
 
-            if(sigma >= 1.5)
-            {
-                for(int j = 0;j < nodes[neighbor_id].neighbor_ids.size;j++)
-                {
-                    int next_id = nodes[neighbor_id].neighbor_ids(j);
+    //         if(sigma >= 1.5)
+    //         {
+    //             for(int j = 0;j < nodes[neighbor_id].neighbor_ids.size;j++)
+    //             {
+    //                 int next_id = nodes[neighbor_id].neighbor_ids(j);
 
-                    if(map[next_id] != 1)
-                    {
-                        nodes[next_id].data = nodes[next_id].data + (alpha * (nodes[id].data - nodes[next_id].data));
-                        nodes[next_id].weight = nodes[next_id].weight;
-                    }
-                }
-            }
-        }
-    }
+    //                 if(map[next_id] != 1)
+    //                 {
+    //                     nodes[next_id].data = nodes[next_id].data + (alpha * (nodes[id].data - nodes[next_id].data));
+    //                     nodes[next_id].weight = nodes[next_id].weight;
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 #endif

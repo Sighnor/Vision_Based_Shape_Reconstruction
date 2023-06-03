@@ -59,7 +59,7 @@ class Camera
 
 inline Ray Camera::Get_Ray(float x, float y, Side side)
 {
-    float scale = tan(deg_rad(fov * 0.5));
+    float scale = tan(deg_to_rad(fov * 0.5));
     float imageAspectRatio = width / height;
 
     vec3 ori;
@@ -95,8 +95,14 @@ inline vec3 Camera::Rebuild(const vec2 &point1, const vec2 &point2)
     // std::cout << l_ray.dir.z - r_ray.dir.z << std::endl;
     // std::cout << l_ray.dir.y - r_ray.dir.y << std::endl;
 
+    // std::cout << "rebuild!" << std::endl;
+    // print(l_ray.ori);
+    // print(l_ray.dir);
+    // print(r_ray.ori);
+    // print(r_ray.dir);
+
     vec3 cordiantes = Get_Intersection(l_ray, r_ray);
-    return position + (orientation * cordiantes);
+    return cordiantes;
 }
 
 #endif

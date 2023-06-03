@@ -1,5 +1,5 @@
-#ifndef ENGINE_GLOBAL
-#define ENGINE_GLOBAL
+#ifndef IMG_GLOBAL
+#define IMG_GLOBAL
 
 #include <iostream>
 #include <functional>
@@ -8,7 +8,8 @@
 
 #define PI 3.14159265358979323846f
 
-static inline float deg_rad(const float& deg) { return deg * M_PI / 180.0; }
+static inline float deg_to_rad(const float& deg) { return deg * PI / 180.f; }
+static inline float rad_to_deg(const float& rad) { return rad / PI * 180.f; }
 
 static inline float clampf(float x, float min, float max)
 {
@@ -73,6 +74,19 @@ static inline float minf_3(float x, float y, float z)
             return z;
         }
     }
+}
+
+static inline float circulate_float(float f, float min, float max)
+{
+    if(f < min)
+    {
+        return f + (max - min);
+    }
+    else if(f > max)
+    {
+        return f - (max - min);
+    }
+    return f;
 }
 
 static inline float get_random_float()

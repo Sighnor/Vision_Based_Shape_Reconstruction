@@ -14,7 +14,7 @@ struct vec2
 
 static inline void print(const vec2 &v)
 {
-    printf("%f, %f\n", v.x, v.y);
+    printf("\n%f\n%f\n", v.x, v.y);
 }
 
 static inline vec2 operator + (vec2 v1, vec2 v2)
@@ -83,7 +83,12 @@ struct vec3
 
 static inline void print(const vec3 &v)
 {
-    printf("%f, %f, %f\n", v.x, v.y, v.z);
+    printf("\n%f\n%f\n%f\n", v.x, v.y, v.z);
+}
+
+static inline vec2 vec3_to_vec2(vec3 v)
+{
+    return vec2(v.x, v.y);
 }
 
 static inline vec3 operator + (vec3 v1, vec3 v2)
@@ -106,9 +111,19 @@ static inline vec3 operator * (vec3 v, float s)
     return vec3(v.x * s, v.y * s, v.z * s);
 }
 
+static inline vec3 operator * (vec3 v1, vec3 v2)
+{
+    return vec3(v1.x * v2.x, v1.y * v2.y, v1.z * v2.z);
+}
+
 static inline vec3 operator / (vec3 v, float s)
 {
     return vec3(v.x / s, v.y / s, v.z / s);
+}
+
+static inline vec3 operator / (vec3 v1, vec3 v2)
+{
+    return vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z);
 }
 
 static inline vec3 operator - (vec3 v)
@@ -134,6 +149,11 @@ static inline float length(const vec3 &v)
     return sqrtf(dot(v, v));
 }
 
+static inline float length2(const vec3 &v)
+{
+    return (dot(v, v));
+}
+
 static inline vec3 normalize(vec3 v, float eps = 1e-8f)
 {
     return v / (length(v) + eps);
@@ -144,36 +164,37 @@ static inline vec3 lerp(vec3 v1, vec3 v2, float alpha)
     return v1 * (1.0f - alpha) + v2 * alpha;
 }
 
-static inline vec3 clamp(vec3 v1, float min = 0.f, float max = 255.f)
+static inline vec3 clampv(vec3 v, float min = 0.f, float max = 255.f)
 {
-    if(v1.x < min)
-    {
-        v1.x = min;
-    }
-    else if(v1.x > max)
-    {
-        v1.x = max;
-    }
+    v.x = clampf(v.x, min, max);
+    v.y = clampf(v.y, min, max);
+    v.z = clampf(v.z, min, max);
 
-    if(v1.y < min)
-    {
-        v1.y = min;
-    }
-    else if(v1.y > max)
-    {
-        v1.y = max;
-    }
+    return v;
+}
 
-    if(v1.z < min)
-    {
-        v1.z = min;
-    }
-    else if(v1.z > max)
-    {
-        v1.z = max;
-    }
+static inline vec3 powv(vec3 v, float f)
+{
+    return vec3(pow(v.x, f), pow(v.y, f), pow(v.z, f));
+}
 
-    return v1;
+static inline vec3 mix(vec3 F0, vec3 albedo, float matallic)
+{
+    return F0;
+}
+
+static inline vec2 dir_to_angle(vec3 v)
+{
+    vec3 dir = normalize(v);
+    float phi = acos(dir.y);
+    float theta = atan2(dir.x, dir.z);
+
+    return vec2(theta, phi);
+}
+
+static inline vec3 angle_to_dir(vec2 angle)
+{
+    return vec3(sin(angle.x) * sin(angle.y), cos(angle.y), cos(angle.x) * sin(angle.y));
 }
 
 struct vec4
@@ -188,7 +209,7 @@ struct vec4
 
 static inline void print(const vec4 &v)
 {
-    printf("%f, %f, %f, %f\n", v.x, v.y, v.z, v.w);
+    printf("\n%f\n%f\n%f\n%f\n", v.x, v.y, v.z, v.w);
 }
 
 static inline vec4 vec_to_vec4(vec3 v)
@@ -204,6 +225,11 @@ static inline vec4 pos_to_vec4(vec3 p)
 static inline vec2 vec4_to_vec2(vec4 v)
 {
     return vec2(v.x, v.y);
+}
+
+static inline vec3 vec4_to_vec3(vec4 v)
+{
+    return vec3(v.x, v.y, v.z);
 }
 
 static inline vec4 operator + (vec4 v1, vec4 v2)
@@ -236,9 +262,29 @@ static inline vec4 operator - (vec4 v)
     return vec4(-v.x, -v.y, -v.z, -v.w);
 }
 
+static inline float dot(vec4 v1, vec4 v2)
+{
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w;
+}
+
+static inline float length(vec4 v)
+{
+    return sqrtf(dot(v, v));
+}
+
 static inline vec4 normalize(vec4 v, float eps = 1e-8f)
 {
+    return v / (length(v) + eps);
+}
+
+static inline vec4 standardize(vec4 v, float eps = 1e-8f)
+{
     return v / (v.w + eps);
+}
+
+static inline vec4 to_one(vec4 v, float eps = 1e-8f)
+{
+    return v / (v.x + v.y + v.z + v.w + eps);
 }
 
 #endif
