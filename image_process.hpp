@@ -59,19 +59,19 @@ void Draw_SOM(cv::Mat &img1, const vec2 contour_point, Net &net, int id, const c
 {
     // cv::Mat img2 = img1.clone();
     cv::Mat &img2 = img1;
-    std::vector<vec2> points = net.Node_Data();
+    std::vector<vec2> points = net.Nodes_Weights();
 
     // Draw_Line(img2, points);
     // Draw_Curve(img2, points, Bezier);
-    Draw_Curve(img2, points, PID);
-    // Draw_Curve(img2, points, Spine);
+    // Draw_Curve(img2, points, PID);
+    Draw_Curve(img2, points, Spine);
 
     for(int i = 0; i < points.size(); i++)
     {
-        // cv::circle(img2, cv::Point(points[i].x, points[i].y), 10, cv::Scalar(128, 128, 128)); 
+        cv::circle(img2, cv::Point(points[i].x, points[i].y), 10, cv::Scalar(0, 255.f * i / points.size(), 0)); 
     }
-    cv::circle(img2, cv::Point(points[id].x, points[id].y), 10, cv::Scalar(255, 0, 0)); 
-    cv::circle(img2, cv::Point(contour_point.x, contour_point.y), 10, cv::Scalar(0, 255, 0)); 
+    // cv::circle(img2, cv::Point(points[id].x, points[id].y), 10, cv::Scalar(255, 0, 0)); 
+    // cv::circle(img2, cv::Point(contour_point.x, contour_point.y), 10, cv::Scalar(0, 255, 0)); 
     
     cv::imshow(img_name, img2);
     cv::waitKey(10);
@@ -82,7 +82,7 @@ cv::Mat Gaussian_filter(cv::Mat &img1, int m, int n, float k, float theta_2)
     int height = img1.rows;
     int width = img1.cols;
     cv::Mat img2 = img1.clone();
-    std::vector<float> prt_core((m + 1) * (n + 1));
+    array2d<float> prt_core((m + 1), (n + 1));;
 
     Precompute_Core(prt_core, m, n, k, theta_2);
 
@@ -103,7 +103,7 @@ cv::Mat Gaussian_filter(cv::Mat &img1, int m, int n, float k, float theta_2)
             {
                 for (int b = neg_xRadius; b <= pos_xRadius; b++)
                 {
-                    float temp_core = prt_core[abs(a) * (n + 1) + abs(b)];
+                    float temp_core = prt_core(abs(a), abs(b));
                     B += img1.at<cv::Vec3b>(y + a, x + b)[0] * temp_core;
                     G += img1.at<cv::Vec3b>(y + a, x + b)[1] * temp_core;
                     R += img1.at<cv::Vec3b>(y + a, x + b)[2] * temp_core;
@@ -124,7 +124,7 @@ cv::Mat Joint_Bilateral_filter(cv::Mat &img1, int m, int n, float k, float theta
     int height = img1.rows;
     int width = img1.cols;
     cv::Mat img2 = img1.clone();
-    std::vector<float> prt_core((m + 1) * (n + 1));
+    array2d<float> prt_core((m + 1), (n + 1));;
 
     Precompute_Core(prt_core, m, n, k, theta_2);
 
@@ -154,7 +154,7 @@ cv::Mat Joint_Bilateral_filter(cv::Mat &img1, int m, int n, float k, float theta
                                     img1.at<cv::Vec3b>(y + a, x + b)[1], 
                                     img1.at<cv::Vec3b>(y + a, x + b)[2]);
 
-                    float temp_core = prt_core[abs(a) * (n + 1) + abs(b)] * exp(- length2(color0 - color1) / 2.f / sigma / sigma);
+                    float temp_core = prt_core(abs(a), abs(b)) * exp(- length2(color0 - color1) / 2.f / sigma / sigma);
 
                     B += img1.at<cv::Vec3b>(y + a, x + b)[0] * temp_core;
                     G += img1.at<cv::Vec3b>(y + a, x + b)[1] * temp_core;
@@ -202,19 +202,30 @@ void HSV_cut(cv::Mat &img1, uchar min_H, uchar max_H, uchar min_S, uchar max_S, 
     cv::cvtColor(img1, img1, cv::COLOR_HSV2BGR);
 }
 
-std::vector<vec2> Canny(cv::Mat &img1, const char* img_name)
+std::vector<vec2> Canny(
+                    cv::Mat &img1, 
+                    const char* img_name, 
+                    int &min_H, 
+                    int &max_H, 
+                    int &min_S, 
+                    int &max_S, 
+                    int &min_V, 
+                    int &max_V)
 {
     int height = img1.rows;
     int width = img1.cols;
     cv::Mat filter = Gaussian_filter(img1, 4, 4, 1.0, 1.5);
-    // cv::Mat filter = Joint_Bilateral_filter(img, 4, 4, 1, 50, 50);
-    HSV_cut(filter, 0, 255, 0, 255, 0, 46);
+    // cv::Mat filter = Joint_Bilateral_filter(img1, 4, 4, 1, 50, 50);
+    // cv::Mat filter = img1.clone();
+    // HSV_cut(filter, 0, 255, 0, 255, 0, 46);
     // HSV_cut(filter, 0, 90, 0, 255, 0, 255);
+    // HSV_cut(filter, 35, 77, 0, 255, 0, 255);
+    HSV_cut(filter, min_H, max_H, min_S, max_S, min_V, max_V);
     cv::cvtColor(filter, filter, cv::COLOR_BGR2GRAY);
     // cv::imshow("cut", filter);
     // cv::threshold(filter, filter, 1, 255, CV_THRESH_BINARY);
     cv::Mat G = img1.clone();
-    std::vector<float> theta(height * width);
+    array2d<float> theta(height, width);
     std::vector<vec2> contour_points;
 
     #pragma omp parallel for
@@ -232,7 +243,7 @@ std::vector<vec2> Canny(cv::Mat &img1, const char* img_name)
                     float Gy = 0.333f * (pos_y[x - 1] + pos_y[x] + pos_y[x + 1] - neg_y[x - 1] - neg_y[x] - neg_y[x + 1]);
                     float Gx = 0.333f * (pos_y[x + 1] + mid_y[x + 1] + neg_y[x + 1] - pos_y[x - 1] - mid_y[x - 1] - neg_y[x - 1]);
                     G.ptr<uchar>(y)[x] = sqrtf(Gy * Gy + Gx * Gx);
-                    theta[y * width + x] = Gx / Gy;
+                    theta(y, x) = Gx / Gy;
                 }
             }
         }
@@ -243,7 +254,7 @@ std::vector<vec2> Canny(cv::Mat &img1, const char* img_name)
         for (int x = 1; x < width - 1; x++)
         {
             filter.ptr<uchar>(y)[x] = G.ptr<uchar>(y)[x];
-            if(theta[y * width + x] >= 2.414 || theta[y * width + x] <= -2.414)
+            if(theta(y, x) >= 2.414 || theta(y, x) <= -2.414)
             {
                 if(filter.ptr<uchar>(y)[x] < G.ptr<uchar>(y)[x - 1])
                 {
@@ -254,7 +265,7 @@ std::vector<vec2> Canny(cv::Mat &img1, const char* img_name)
                     filter.ptr<uchar>(y)[x] = 0;
                 }
             }
-            else if(theta[y * width + x] <= 0.414 && theta[y * width + x] >= -0.414)
+            else if(theta(y, x) <= 0.414 && theta(y, x) >= -0.414)
             {
                 if(filter.ptr<uchar>(y)[x] < G.ptr<uchar>(y - 1)[x])
                 {
@@ -265,7 +276,7 @@ std::vector<vec2> Canny(cv::Mat &img1, const char* img_name)
                     filter.ptr<uchar>(y)[x] = 0;
                     }
             }
-            else if(theta[y * width + x] > 0)
+            else if(theta(y, x) > 0)
             {
                 if(filter.ptr<uchar>(y)[x] < G.ptr<uchar>(y - 1)[x - 1])
                 {
@@ -294,7 +305,7 @@ std::vector<vec2> Canny(cv::Mat &img1, const char* img_name)
         }
     }
 
-    cv::threshold(filter, filter, 2, 255, CV_THRESH_BINARY);
+    cv::threshold(filter, filter, 120, 255, CV_THRESH_BINARY);
 
     cv::imshow(img_name, filter);
 
@@ -308,7 +319,7 @@ std::vector<vec2> Identify_Centerline(cv::Mat &img1, Net &net, std::vector<vec2>
     std::mt19937 rng(dev());
     std::uniform_real_distribution<float> dist(0.f, 1.f);
 
-	net.SOM_Init(img1.rows, img1.cols);
+	// net.SOM_Init(img1.rows, img1.cols, contour_points);
 
     for(int t = 0; t < 2 * T; t++)
     {
@@ -317,7 +328,7 @@ std::vector<vec2> Identify_Centerline(cv::Mat &img1, Net &net, std::vector<vec2>
         float alpha = 0.01 / (float(1) + float(t) / float(T));
         float sigma = t < T? 1.0 : 1.0;
         if(t == 2 * T - 1)
-        // if(t % 2 == 0)
+        // if(t % 20 == 0)
         {
             Draw_SOM(img1, contour_points[cord_id], net, id, img_name);
         }
@@ -325,7 +336,7 @@ std::vector<vec2> Identify_Centerline(cv::Mat &img1, Net &net, std::vector<vec2>
         net.SOM_Update(contour_points[cord_id], id, alpha, sigma);
     }
 
-    std::vector<vec2> center_points = net.Node_Data();
+    std::vector<vec2> center_points = net.Nodes_Weights();
 
     return center_points;
 }

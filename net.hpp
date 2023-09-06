@@ -14,34 +14,33 @@ class Net_Node
     public:
         int id;
         array1d<int> neighbor_ids;
-        float weight;
-        vec2 data;
+        vec2 weight;
 
-        Net_Node(int _id, array1d<int> _neighbor_ids) : id(_id), neighbor_ids(_neighbor_ids), weight(), data() {}
+        Net_Node(int _id, array1d<int> _neighbor_ids) : id(_id), neighbor_ids(_neighbor_ids), weight() {}
 };
 
 class Net
 {
 public:
     int size;
-    std::vector<Net_Node> nodes;
+    array1d<Net_Node> nodes;
 
     Net(int _size = 0) : size(_size) {}
     
-    inline std::vector<vec2> Node_Data();
+    inline std::vector<vec2> Nodes_Weights();
     inline void Read(const char* filename);
     inline void Write(const char* filename, int size);
-    inline void SOM_Init(int width, int height);
+    inline void SOM_Init(int height, int width, std::vector<vec2> &contour_points);
     inline int SOM_Find_Min(vec2 &contour);
     inline void SOM_Update(vec2 &contour, int id, float alpha, float sigma);
 };
 
-inline std::vector<vec2> Net::Node_Data()
+inline std::vector<vec2> Net::Nodes_Weights()
 {
     std::vector<vec2> res;
-    for(auto pos : nodes)
+    for(int i = 0; i < size; i++)
     {
-        res.push_back(pos.data);
+        res.push_back(nodes(i).weight);
     }
     return res;
 }
@@ -52,6 +51,7 @@ inline void Net::Read(const char* filename)
     assert(fp != NULL);
 
     fread(&size, sizeof(int), 1, fp);
+    nodes.resize(size);
 
     for(int i = 0; i < size; i++)
     {
@@ -66,7 +66,7 @@ inline void Net::Read(const char* filename)
         //std::cout << id << ", " << neighbor_ids.size << ", " << neighbor_ids << std::endl;
 
         Net_Node node(id, neighbor_ids);
-        nodes.push_back(node);
+        nodes(i) = node;
     }
 
     fclose(fp);
@@ -108,18 +108,85 @@ inline void Net::Write(const char* filename, int size)
     fclose(fp);
 }
 
-inline void Net::SOM_Init(int height, int width)
+inline void Net::SOM_Init(int height, int width, std::vector<vec2> &contour_points)
 {
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_real_distribution<float> dist(0.f, 1.f);
-
-    for(int i = 0; i < size; i++)
+    vec2 bottom_point;
+    for(int i = 0; i < 20; i++)
     {
-        nodes[i].weight = dist(rng);
-        nodes[i].data = vec2(0.5f * width, (float((size - 1 - i) + 1) / (size + 1) * 0.5f + 0.5f * (1.f - 0.5f)) * height);
-        // nodes[i].data = vec2(float(float(i + 1) / (size + 1) * width), float(0.5 * height));
-        // std::cout << node.id << ", " << node.neighbor_ids << ", " << node.weight << ", " << node.data << std::endl;
+        int id = contour_points.size() - 1 - i;
+        bottom_point = bottom_point + 0.05f * contour_points[id];
+    }
+
+    int begin_id = 0;
+    int end_id = 0;
+    float min_length = 1000000;
+    for(int i = 0; i < 20; i++)
+    {
+        int id = contour_points.size() - 1 - i;
+        float temp_length = length(contour_points[id] - bottom_point);
+        if(temp_length < min_length)
+        {
+            begin_id = id;
+            min_length = temp_length;
+            nodes(0).weight = contour_points[id];
+        }
+    }
+
+    array2d<int> map_img_id(height, width);
+    array1d<int> sort_id(contour_points.size());
+    int curr_id = begin_id;
+    vec2 curr_vel = vec2(1, 0);
+
+    map_img_id.set(-1);
+    for(int i = 0; i < contour_points.size(); i++)
+    {
+        map_img_id(contour_points[i].y, contour_points[i].x) = i;
+    }
+    for(int i = 0; i < contour_points.size(); i++)
+    {
+        sort_id(i) = curr_id;
+        int x = contour_points[curr_id].x;
+        int y = contour_points[curr_id].y;
+        int next_id;
+        vec2 next_vel;
+        float best_theta = PI;
+        for(int j = -1; j <= 1; j++)
+        {
+            for(int k = -1; k <= 1; k++)
+            {
+                int temp_id = map_img_id(y + k, x + j);
+                vec2 temp_vel = vec2(j, k);
+                float temp_theta = acos(dot(curr_vel, temp_vel) / length(curr_vel) / length(temp_vel));
+                if(temp_id != curr_id && temp_id >= 0)
+                {
+                    if(temp_theta < best_theta)
+                    {
+                        next_id = temp_id;
+                        next_vel = temp_vel;
+                        best_theta = temp_theta;
+                    }
+                }
+            }
+        }
+        if(best_theta < PI && (i < 20 || length(contour_points[next_id] - contour_points[begin_id]) > 2))
+        {
+            map_img_id(contour_points[next_id].y, contour_points[next_id].x) = -1;
+            curr_id = next_id;
+            curr_vel = next_vel;
+        }
+        else
+        {
+            end_id = i;
+            break;
+        }
+    }
+
+    for(int i = 1; i < size; i++)
+    {
+        // nodes(i).weight = vec2(0.5f * 540, (float((size - 1 - i) + 1) / (size + 1) * 0.5f + 0.5f * (1.f - 0.5f)) * 540);
+        nodes(i).weight = (contour_points[sort_id(0.5f * end_id * i / (size - 1))] + contour_points[sort_id(end_id - 0.5f * end_id * i / (size - 1))]) / 2;
+        // nodes(i).weight = vec2(float(float(i + 1) / (size + 1) * width), float(0.5 * height));
+        // std::cout << node.id << ", " << node.neighbor_ids << ", " << node.weight << std::endl;
     }
 }
 
@@ -129,7 +196,7 @@ inline int Net::SOM_Find_Min(vec2 &contour)
     float min_distance = 10000000000;
     for(int i = 0; i < size; i++)
     {
-        float temp_distance = length(nodes[i].data - contour);
+        float temp_distance = length(nodes(i).weight - contour);
         if(temp_distance < min_distance)
         {
             id = i;
@@ -141,37 +208,34 @@ inline int Net::SOM_Find_Min(vec2 &contour)
 
 inline void Net::SOM_Update(vec2 &contour, int id, float alpha, float sigma)
 {
-    // std::vector<int> map(size);
+    array1d<int> map(size);
 
-    // map[id] = 1;
-    // nodes[id].data = nodes[id].data + (alpha * (contour - nodes[id].data));
-    // nodes[id].weight = nodes[id].weight;
+    map(id) = 1;
+    nodes(id).weight = nodes(id).weight + (alpha * (contour - nodes(id).weight));
 
-    // if(sigma >= 1.0)
-    // {
-    //     for(int i = 0; i < nodes[id].neighbor_ids.size; i++)
-    //     {
-    //         int neighbor_id = nodes[id].neighbor_ids(i);
+    if(sigma >= 1.0)
+    {
+        for(int i = 0; i < nodes(id).neighbor_ids.size; i++)
+        {
+            int neighbor_id = nodes(id).neighbor_ids(i);
 
-    //         map[neighbor_id] = 1;
-    //         nodes[neighbor_id].data = nodes[neighbor_id].data + (alpha * (nodes[id].data - nodes[neighbor_id].data));
-    //         nodes[neighbor_id].weight = nodes[neighbor_id].weight;
+            map(neighbor_id) = 1;
+            nodes(neighbor_id).weight = nodes(neighbor_id).weight + (alpha * (nodes(id).weight - nodes(neighbor_id).weight));
 
-    //         if(sigma >= 1.5)
-    //         {
-    //             for(int j = 0;j < nodes[neighbor_id].neighbor_ids.size;j++)
-    //             {
-    //                 int next_id = nodes[neighbor_id].neighbor_ids(j);
+            if(sigma >= 1.5)
+            {
+                for(int j = 0;j < nodes(neighbor_id).neighbor_ids.size;j++)
+                {
+                    int next_id = nodes(neighbor_id).neighbor_ids(j);
 
-    //                 if(map[next_id] != 1)
-    //                 {
-    //                     nodes[next_id].data = nodes[next_id].data + (alpha * (nodes[id].data - nodes[next_id].data));
-    //                     nodes[next_id].weight = nodes[next_id].weight;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+                    if(map(next_id) != 1)
+                    {
+                        nodes(next_id).weight = nodes(next_id).weight + (alpha * (nodes(id).weight - nodes(next_id).weight));
+                    }
+                }
+            }
+        }
+    }
 }
 
 #endif

@@ -7,17 +7,18 @@
 #include <opencv2\imgproc\imgproc.hpp>
 #include <opencv2\objdetect\objdetect.hpp>
 #include <opencv2\imgproc\types_c.h>
+#include "global.hpp"
 #include "vec.hpp"
 
-void Draw_point(cv::Mat &img1, vec2 &point, std::vector<float> &core, vec3 color)
+void Draw_point(cv::Mat &img1, vec2 &point, slice2d<float> core, vec3 color)
 {
     for(int i = -1; i <= 1; i++)
     {
-        for(int j = -1;j <= 1;j++)
+        for(int j = -1; j <= 1; j++)
         {
             img1.at<cv::Vec3b>(point.y + i, point.x + j)[0] = color.x;
             img1.at<cv::Vec3b>(point.y + i, point.x + j)[1] = color.y;
-            img1.at<cv::Vec3b>(point.y + i, point.x + j)[2] = core[abs(i) * 2  + abs(j)] * color.z;
+            img1.at<cv::Vec3b>(point.y + i, point.x + j)[2] = core(abs(i), abs(j)) * color.z;
         }
     }
 }
@@ -28,23 +29,23 @@ vec2 recursive_bezier(const std::vector<vec2> &points, float t)
 
     if(points.size() == 2)
     {
-        return (1-t) * points[0] + t * points[1];
+        return (1 - t) * points[0] + t * points[1];
     }
     
     for(int i = 0; i < (points.size() -1); i++)
     {
-       sub_points.push_back((1-t) * points[i] + t * points[i+1]);
+       sub_points.push_back((1 - t) * points[i] + t * points[i + 1]);
     }
 
-    return recursive_bezier(sub_points,t);
+    return recursive_bezier(sub_points, t);
 }
 
 void bezier_curve(cv::Mat &img1, const std::vector<vec2> &points) 
 {
-    std::vector<float> prt_core((1 + 1) * (1 + 1));
+    array2d<float> prt_core((1 + 1), (1 + 1));
     Precompute_Core(prt_core, 1, 1, 1.0, 1.5);
 
-    for (double t = 0.0; t <= 1.0; t += 0.001) 
+    for(double t = 0.0; t <= 1.0; t += 0.001) 
     {
         auto point = recursive_bezier(points,t);
 
@@ -78,7 +79,7 @@ void pos_pid_control(
 
 void PID_curve(cv::Mat &img1, const std::vector<vec2> &points)
 {
-    std::vector<float> prt_core((1 + 1) * (1 + 1));
+    array2d<float> prt_core((1 + 1), (1 + 1));
     Precompute_Core(prt_core, 1, 1, 1.0, 1.5);
 
     vec2 x = points[0];
@@ -128,7 +129,7 @@ void cubic_spine_interpolation(
 
 void spine_curve(cv::Mat &img1, const std::vector<vec2> &points)
 {
-    std::vector<float> prt_core((1 + 1) * (1 + 1));
+    array2d<float> prt_core((1 + 1), (1 + 1));
     Precompute_Core(prt_core, 1, 1, 1.0, 1.5);
 
     std::vector<vec2> vec(points.size());

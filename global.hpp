@@ -5,6 +5,7 @@
 #include <functional>
 #include <math.h>
 #include <random>
+#include "array.hpp"
 
 #define PI 3.14159265358979323846f
 
@@ -113,13 +114,13 @@ inline float Core(int s, int t, float k, float theta_2)
     return k * exp(-distance2 / (2 * theta_2));
 }
 
-void Precompute_Core(std::vector<float> &prt_core, int m, int n, float k, float theta_2)
+void Precompute_Core(slice2d<float> prt_core, int m, int n, float k, float theta_2)
 {
     for (int a = 0; a <= m; a++)
     {
         for (int b = 0; b <= n; b++)
         {
-            prt_core[a * (n + 1) + b] = Core(a, b, k, theta_2);
+            prt_core(a, b) = Core(a, b, k, theta_2);
         }
     }
 }
